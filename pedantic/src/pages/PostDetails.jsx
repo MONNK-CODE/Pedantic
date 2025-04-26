@@ -1,25 +1,30 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase/client";
 
 function PostDetails() {
-    const [currentUser, setCurrentUser] = useState(null);
-    const { postId } = useParams();
+    const { id } = useParams();
     const navigate = useNavigate();
     const [post, setPost] = useState(null);
+    const [comment, setComment] = useState("");
     const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchPost();
+        fetchComments();
+    }, [id]);
 
     const fetchPost = async () => {
         const { data, error } = await supabase
             .from("posts")
             .select("*")
-            .eq("id", postId)
+            .eq("id", id)
             .single();
 
-        if (error) {
+        if (error || !data) {
             console.error("Error fetching post:", error);
+            setPost(null);
         } else {
             setPost(data);
         }
@@ -30,7 +35,7 @@ function PostDetails() {
         const { data, error } = await supabase
             .from("comments")
             .select("*")
-            .eq("post_id", postId)
+            .eq("post_id", id)
             .order("created_at", { ascending: true });
 
         if (error) {
@@ -40,129 +45,77 @@ function PostDetails() {
         }
     };
 
-    const fetchCurrentUser = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        setCurrentUser(user);
-    };
-
-    useEffect(() => {
-        fetchPost();
-        fetchComments();
-        fetchCurrentUser();
-    }, []);
-
-    const handleAddComment = async (e) => {
+    const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (newComment.trim() === "") return;
 
         const { data, error } = await supabase
             .from("comments")
-            .insert([{ post_id: postId, content: newComment }]);
+            .insert([{ content: comment, post_id: id }]);
 
         if (error) {
             console.error("Error adding comment:", error);
         } else {
-            setNewComment("");
-            fetchComments(); // Refresh comments
+            setComment("");
+            fetchComments();
         }
     };
 
     const handleUpvote = async () => {
         const { data, error } = await supabase
             .from("posts")
-            .update({ upvotes: (post.upvotes || 0) + 1 })
-            .eq("id", postId)
+            .update({ upvotes: post.upvotes + 1 })
+            .eq("id", id)
             .select()
             .single();
 
         if (error) {
             console.error("Error upvoting:", error);
         } else {
-            setPost(data); // Update the post in state
+            setPost(data);
         }
     };
 
-    const handleDelete = async () => {
-        const confirmDelete = window.confirm("Are you sure you want to delete this post?");
-        if (!confirmDelete) return;
+    if (loading) {
+        return <p>Loading...</p>;
+    }
 
-        const { error } = await supabase
-            .from("posts")
-            .delete()
-            .eq("id", postId);
-
-        if (error) {
-            console.error("Error deleting post:", error);
-        } else {
-            navigate("/"); // Go back to home after deleting
-        }
-    };
-
-    if (loading) return <p>Loading post...</p>;
-    if (!post) return <p>Post not found!</p>;
+    if (!post) {
+        return <h1>Post not found!</h1>;
+    }
 
     return (
         <div style={{ maxWidth: "800px", margin: "auto", padding: "20px" }}>
             <h1>{post.title}</h1>
-            <p>Created at: {new Date(post.created_at).toLocaleString()}</p>
-            <p>Upvotes: {post.upvotes}</p>
             {post.image_url && (
-                <img
-                    src={post.image_url}
-                    alt="Post"
-                    style={{ width: "100%", maxHeight: "400px", objectFit: "cover", marginBottom: "20px" }}
-                />
+                <img src={post.image_url} alt="Post" style={{ width: "100%", borderRadius: "8px", marginTop: "10px" }} />
             )}
-            <p>{post.content}</p>
+            <p style={{ marginTop: "10px" }}>{post.content}</p>
+            <p style={{ fontWeight: "bold" }}>Upvotes: {post.upvotes}</p>
+            <button onClick={handleUpvote} style={{ marginTop: "10px", padding: "10px 20px", borderRadius: "8px", backgroundColor: "#0077ff", color: "white", border: "none" }}>
+                Upvote
+            </button>
 
-            <div style={{ marginTop: "20px" }}>
-                <button onClick={handleUpvote} style={{ marginRight: "10px", padding: "8px 16px" }}>
-                    Upvote
-                </button>
-
-                {currentUser && currentUser.id === post.user_id && (
-                    <>
-                        <Link to={`/edit/${post.id}`}>
-                            <button style={{ marginRight: "10px", padding: "8px 16px" }}>Edit</button>
-                        </Link>
-
-                        <button
-                            onClick={handleDelete}
-                            style={{ backgroundColor: "red", color: "white", padding: "8px 16px" }}
-                        >
-                            Delete
-                        </button>
-                    </>
-                )}
-            </div>
-
-
-
-            <hr style={{ margin: "20px 0" }} />
-
-            <h3>Comments</h3>
-            <form onSubmit={handleAddComment} style={{ marginBottom: "20px" }}>
-                <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    style={{ width: "80%", marginRight: "10px", padding: "8px" }}
+            <h2 style={{ marginTop: "30px" }}>Comments</h2>
+            <form onSubmit={handleCommentSubmit} style={{ marginBottom: "20px" }}>
+                <textarea
+                    placeholder="Write a comment..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    style={{ width: "100%", height: "80px", padding: "10px", borderRadius: "8px", marginBottom: "10px" }}
                 />
-                <button type="submit" style={{ padding: "8px 16px" }}>
-                    Post
+                <button type="submit" style={{ padding: "10px 20px", borderRadius: "8px", backgroundColor: "#0077ff", color: "white", border: "none" }}>
+                    Post Comment
                 </button>
             </form>
 
-            {comments.length === 0 ? (
-                <p>No comments yet.</p>
-            ) : (
-                comments.map((comment) => (
-                    <div key={comment.id} style={{ marginBottom: "10px" }}>
-                        <p>{comment.content}</p>
-                        <small>{new Date(comment.created_at).toLocaleString()}</small>
+            {comments.length > 0 ? (
+                comments.map((c) => (
+                    <div key={c.id} style={{ backgroundColor: "#f9f9f9", padding: "10px", borderRadius: "8px", marginBottom: "10px" }}>
+                        {c.content}
                     </div>
                 ))
+            ) : (
+                <p>No comments yet.</p>
             )}
         </div>
     );
