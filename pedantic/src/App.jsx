@@ -1,28 +1,26 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import PostDetails from "./pages/PostDetails";
+import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import CreatePost from "./pages/CreatePost";
+import PostDetails from "./pages/PostDetails";
 import EditPost from "./pages/EditPost";
-import Navbar from "./components/Navbar";
-import Signup from "./pages/Signup";
 import Login from "./pages/Login";
-
+import Signup from "./pages/Signup";
+import Navbar from "./components/Navbar";
 
 function App() {
     return (
-        <Router>
+        <>
             <Navbar />
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/create" element={<CreatePost />} />
-                <Route path="/post/:postId" element={<PostDetails />} />
-                <Route path="/edit/:postId" element={<EditPost />} />
-                <Route path="/signup" element={<Signup />} />
+                <Route path="/post/:id" element={<PostDetails />} />
+                <Route path="/edit/:id" element={<EditPost />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
             </Routes>
-        </Router>
+        </>
     );
 }
-
 
 export default App;
