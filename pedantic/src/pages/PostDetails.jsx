@@ -9,10 +9,12 @@ function PostDetails() {
     const [comment, setComment] = useState("");
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         fetchPost();
         fetchComments();
+        fetchUser();
     }, [id]);
 
     const fetchPost = async () => {
@@ -45,6 +47,11 @@ function PostDetails() {
         }
     };
 
+    const fetchUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+    };
+
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
 
@@ -75,6 +82,23 @@ function PostDetails() {
         }
     };
 
+    const handleDelete = async () => {
+        const { error } = await supabase
+            .from("posts")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+            console.error("Error deleting post:", error);
+        } else {
+            navigate("/");
+        }
+    };
+
+    const handleEdit = () => {
+        navigate(`/edit/${id}`);
+    };
+
     if (loading) {
         return <p>Loading...</p>;
     }
@@ -94,6 +118,18 @@ function PostDetails() {
             <button onClick={handleUpvote} style={{ marginTop: "10px", padding: "10px 20px", borderRadius: "8px", backgroundColor: "#0077ff", color: "white", border: "none" }}>
                 Upvote
             </button>
+
+            {/* Only show edit/delete buttons if the user owns the post */}
+            {user && post.user_id === user.id && (
+                <div style={{ marginTop: "20px" }}>
+                    <button onClick={handleEdit} style={{ marginRight: "10px", padding: "10px 20px", borderRadius: "8px", backgroundColor: "#28a745", color: "white", border: "none" }}>
+                        Edit Post
+                    </button>
+                    <button onClick={handleDelete} style={{ padding: "10px 20px", borderRadius: "8px", backgroundColor: "#dc3545", color: "white", border: "none" }}>
+                        Delete Post
+                    </button>
+                </div>
+            )}
 
             <h2 style={{ marginTop: "30px" }}>Comments</h2>
             <form onSubmit={handleCommentSubmit} style={{ marginBottom: "20px" }}>
